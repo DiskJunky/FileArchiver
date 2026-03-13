@@ -486,6 +486,9 @@ namespace FileArchiver
                 SetUIEnabled(true);
                 IsProcessing = false;
                 HideProgress();
+                // Update selection count after IsProcessing is set to false
+                // This ensures the Archive button is properly enabled/disabled
+                UpdateSelectionCount();
             }
         }
 
@@ -537,6 +540,9 @@ namespace FileArchiver
                 SetUIEnabled(true);
                 IsProcessing = false;
                 HideProgress();
+                // Update selection count after IsProcessing is set to false
+                // This ensures the Archive button is properly enabled/disabled
+                UpdateSelectionCount();
             }
         }
 
