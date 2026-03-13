@@ -166,5 +166,74 @@ namespace FileArchiver
 
             return "System";
         }
+
+        /// <summary>
+        /// Saves the window state (size and position) to application settings.
+        /// </summary>
+        /// <param name="width">The window width in device-independent pixels.</param>
+        /// <param name="height">The window height in device-independent pixels.</param>
+        /// <param name="left">The window left position on screen.</param>
+        /// <param name="top">The window top position on screen.</param>
+        /// <param name="mainGridRow0Height">The height of the main grid's first row (upper content area).</param>
+        /// <remarks>
+        /// Settings are persisted to user.config file in AppData\Local\FileArchiver\
+        /// Fails silently if settings cannot be written.
+        /// </remarks>
+        public static void SaveWindowState(double width, double height, double left, double top, double mainGridRow0Height)
+        {
+            try
+            {
+                Settings.Default.WindowWidth = width.ToString();
+                Settings.Default.WindowHeight = height.ToString();
+                Settings.Default.WindowLeft = left.ToString();
+                Settings.Default.WindowTop = top.ToString();
+                Settings.Default.MainGridRow0Height = mainGridRow0Height.ToString();
+                Settings.Default.Save();
+            }
+            catch
+            {
+                // Silently fail if we can't write settings
+            }
+        }
+
+        /// <summary>
+        /// Loads the window state (size and position) from application settings.
+        /// </summary>
+        /// <param name="width">Output parameter for the window width.</param>
+        /// <param name="height">Output parameter for the window height.</param>
+        /// <param name="left">Output parameter for the window left position.</param>
+        /// <param name="top">Output parameter for the window top position.</param>
+        /// <param name="mainGridRow0Height">Output parameter for the main grid's first row height.</param>
+        /// <remarks>
+        /// Reads from user.config file in AppData\Local\FileArchiver\
+        /// Uses default values if settings cannot be read or contain invalid data.
+        /// Defaults: Width=1000, Height=850, Left=0, Top=0, Row0Height=400
+        /// </remarks>
+        public static void LoadWindowState(out double width, out double height, out double left, out double top, out double mainGridRow0Height)
+        {
+            width = 1000;
+            height = 850;
+            left = 0;
+            top = 0;
+            mainGridRow0Height = 400;
+
+            try
+            {
+                if (double.TryParse(Settings.Default.WindowWidth, out double w))
+                    width = w;
+                if (double.TryParse(Settings.Default.WindowHeight, out double h))
+                    height = h;
+                if (double.TryParse(Settings.Default.WindowLeft, out double l))
+                    left = l;
+                if (double.TryParse(Settings.Default.WindowTop, out double t))
+                    top = t;
+                if (double.TryParse(Settings.Default.MainGridRow0Height, out double r))
+                    mainGridRow0Height = r;
+            }
+            catch
+            {
+                // Silently fail, keeping default values
+            }
+        }
     }
 }

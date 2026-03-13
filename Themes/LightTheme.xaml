@@ -46,6 +46,13 @@
         <Setter Property="Background" Value="{StaticResource ButtonBackgroundBrush}"/>
         <Setter Property="Foreground" Value="{StaticResource TextForegroundBrush}"/>
         <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+        <Style.Triggers>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Background" Value="{StaticResource DisabledBackgroundBrush}"/>
+                <Setter Property="Foreground" Value="{StaticResource DisabledForegroundBrush}"/>
+                <Setter Property="BorderBrush" Value="#E8E8E8"/>
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <!-- ListView Style -->

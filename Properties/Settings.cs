@@ -60,6 +60,61 @@ namespace FileArchiver.Properties
         }
 
         /// <summary>
+        /// Gets or sets the saved window width.
+        /// </summary>
+        [UserScopedSetting]
+        [DefaultSettingValue("1000")]
+        public string WindowWidth
+        {
+            get => (string)this["WindowWidth"];
+            set => this["WindowWidth"] = value;
+        }
+
+        /// <summary>
+        /// Gets or sets the saved window height.
+        /// </summary>
+        [UserScopedSetting]
+        [DefaultSettingValue("850")]
+        public string WindowHeight
+        {
+            get => (string)this["WindowHeight"];
+            set => this["WindowHeight"] = value;
+        }
+
+        /// <summary>
+        /// Gets or sets the saved window left position.
+        /// </summary>
+        [UserScopedSetting]
+        [DefaultSettingValue("0")]
+        public string WindowLeft
+        {
+            get => (string)this["WindowLeft"];
+            set => this["WindowLeft"] = value;
+        }
+
+        /// <summary>
+        /// Gets or sets the saved window top position.
+        /// </summary>
+        [UserScopedSetting]
+        [DefaultSettingValue("0")]
+        public string WindowTop
+        {
+            get => (string)this["WindowTop"];
+            set => this["WindowTop"] = value;
+        }
+
+        /// <summary>
+        /// Gets or sets the saved height of the main grid's first row (upper content area).
+        /// </summary>
+        [UserScopedSetting]
+        [DefaultSettingValue("400")]
+        public string MainGridRow0Height
+        {
+            get => (string)this["MainGridRow0Height"];
+            set => this["MainGridRow0Height"] = value;
+        }
+
+        /// <summary>
         /// Saves all settings to user.config file.
         /// </summary>
         public override void Save()
