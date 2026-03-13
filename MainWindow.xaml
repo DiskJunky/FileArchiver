@@ -6,7 +6,8 @@
         mc:Ignorable="d"
         Title="File Archiver" Height="850" Width="1000"
         WindowStartupLocation="CenterScreen"
-        Background="{DynamicResource WindowBackgroundBrush}">
+        Background="{DynamicResource WindowBackgroundBrush}"
+        Icon="Resources/FileArchiver.png">
 
     <Window.Resources>
         <!-- Custom Archive Button Style with theme support -->
@@ -68,6 +69,8 @@
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="5"/>
                             <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="5"/>
+                            <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                     </Grid>
                 </ItemsPanelTemplate>
@@ -99,8 +102,21 @@
             <!-- Separator -->
             <Separator Grid.Column="3" x:Name="StatusSeparator" Visibility="Collapsed"/>
 
-            <!-- Ready Status -->
+            <!-- Log Folder Link -->
             <StatusBarItem Grid.Column="4">
+                <TextBlock VerticalAlignment="Center">
+                    <Hyperlink Click="OpenLogFolder_Click" 
+                               ToolTip="Click to open the log folder">
+                        <Run Text="📁 Log Folder"/>
+                    </Hyperlink>
+                </TextBlock>
+            </StatusBarItem>
+
+            <!-- Separator -->
+            <Separator Grid.Column="5"/>
+
+            <!-- Ready Status -->
+            <StatusBarItem Grid.Column="6">
                 <TextBlock x:Name="ReadyStatusText" Text="Ready" FontSize="12" 
                            VerticalAlignment="Center"/>
             </StatusBarItem>
