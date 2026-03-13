@@ -5,239 +5,262 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="File Archiver" Height="850" Width="1000"
-        WindowStartupLocation="CenterScreen">
-    <Grid Margin="10">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="2*" MinHeight="400"/>
-            <RowDefinition Height="5"/>
-            <RowDefinition Height="1*" MinHeight="150"/>
-        </Grid.RowDefinitions>
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource WindowBackgroundBrush}">
 
-        <!-- Main Content Area -->
-        <Grid Grid.Row="0">
+    <Window.Resources>
+        <!-- Custom Archive Button Style with theme support -->
+        <Style x:Key="ArchiveButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource ArchiveButtonBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="5" BorderThickness="0">
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="{DynamicResource DisabledBackgroundBrush}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource DisabledForegroundBrush}"/>
+                </Trigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource ArchiveButtonHoverBrush}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <DockPanel>
+        <!-- Menu Bar -->
+        <Menu DockPanel.Dock="Top" Background="{DynamicResource ControlBackgroundBrush}">
+            <MenuItem Header="_File" Foreground="{DynamicResource TextForegroundBrush}">
+                <MenuItem Header="_Exit" Click="Exit_Click"/>
+            </MenuItem>
+            <MenuItem Header="_Theme" Foreground="{DynamicResource TextForegroundBrush}">
+                <MenuItem Header="_Light" Click="LightTheme_Click" 
+                          x:Name="LightThemeMenuItem"/>
+                <MenuItem Header="_Dark" Click="DarkTheme_Click" 
+                          x:Name="DarkThemeMenuItem"/>
+                <Separator/>
+                <MenuItem Header="_System Default" Click="SystemTheme_Click" 
+                          x:Name="SystemThemeMenuItem" IsChecked="True"/>
+            </MenuItem>
+            <MenuItem Header="_Help" Foreground="{DynamicResource TextForegroundBrush}">
+                <MenuItem Header="_About" Click="About_Click"/>
+            </MenuItem>
+        </Menu>
+
+        <!-- Main Content -->
+        <Grid Margin="10" DockPanel.Dock="Bottom">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="2*" MinHeight="400"/>
+                <RowDefinition Height="5"/>
+                <RowDefinition Height="1*" MinHeight="150"/>
             </Grid.RowDefinitions>
 
-            <!-- Folder Selection -->
-            <GroupBox Grid.Row="0" Header="Source Folder" Padding="10" Margin="0,0,0,10">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBox x:Name="FolderPathTextBox" Grid.Column="0" VerticalAlignment="Center" 
-                             Padding="5" FontSize="14"/>
-                    <Button x:Name="BrowseButton" Grid.Column="1" Content="Browse..." 
-                            Width="100" Margin="10,0,0,0" Click="BrowseButton_Click" Padding="5"/>
-                </Grid>
-            </GroupBox>
-
-            <!-- Search Field -->
-            <GroupBox Grid.Row="1" Header="Search Criteria" Padding="10" Margin="0,0,0,10">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBox x:Name="SearchTextBox" Grid.Column="0" VerticalAlignment="Center" 
-                             Padding="5" FontSize="14" 
-                             ToolTip="Enter file name search terms (all words must match)"/>
-                    <Button x:Name="ScanButton" Grid.Column="1" Content="Scan Files" 
-                            Width="120" Margin="10,0,0,0" Click="ScanButton_Click" 
-                            Padding="5" FontWeight="Bold"/>
-                </Grid>
-            </GroupBox>
-
-            <!-- Progress Panel -->
-            <GroupBox Grid.Row="2" Header="Progress" Padding="10" Margin="0,0,0,10"
-                      x:Name="ProgressPanel" Visibility="Collapsed">
-                <StackPanel>
-                    <TextBlock x:Name="ProgressText" FontSize="13" Margin="0,0,0,5" FontWeight="SemiBold"/>
-                    <ProgressBar x:Name="ProgressBar" Height="25" Minimum="0" Maximum="100">
-                        <ProgressBar.Style>
-                            <Style TargetType="ProgressBar">
-                                <Setter Property="Foreground" Value="#FF4CAF50"/>
-                            </Style>
-                        </ProgressBar.Style>
-                    </ProgressBar>
-                </StackPanel>
-            </GroupBox>
-
-            <!-- Archive Info -->
-            <GroupBox Grid.Row="3" Header="Archive Information" Padding="10" Margin="0,0,0,10"
-                      x:Name="ArchiveInfoPanel" Visibility="Collapsed">
-                <StackPanel>
-                    <TextBlock x:Name="ArchiveExistsText" FontSize="13" Margin="0,0,0,5"/>
-                    <TextBlock x:Name="ArchiveFileCountText" FontSize="13"/>
-                </StackPanel>
-            </GroupBox>
-
-            <!-- Preview List -->
-            <GroupBox Grid.Row="4" Header="Preview - Files Found" Padding="10" Margin="0,0,0,10">
-                <ListView x:Name="FilesListView" SelectionMode="Single">
-                    <ListView.View>
-                        <GridView>
-                            <GridViewColumn Header="Name" Width="400">
-                                <GridViewColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding FileName}" ToolTip="{Binding FullPath}"/>
-                                    </DataTemplate>
-                                </GridViewColumn.CellTemplate>
-                            </GridViewColumn>
-                            <GridViewColumn Header="Size" Width="100">
-                                <GridViewColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding FileSizeFormatted}" TextAlignment="Right"/>
-                                    </DataTemplate>
-                                </GridViewColumn.CellTemplate>
-                            </GridViewColumn>
-                            <GridViewColumn Header="Status" Width="150">
-                                <GridViewColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding Status}">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding ExistsInArchive}" Value="True">
-                                                            <Setter Property="Foreground" Value="OrangeRed"/>
-                                                            <Setter Property="FontWeight" Value="Bold"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
-                                    </DataTemplate>
-                                </GridViewColumn.CellTemplate>
-                            </GridViewColumn>
-                            <GridViewColumn Header="Action" Width="220">
-                                <GridViewColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <StackPanel Orientation="Horizontal">
-                                            <CheckBox Content="Archive" IsChecked="{Binding IsSelected}" 
-                                                      Margin="0,0,10,0" VerticalAlignment="Center"/>
-                                            <CheckBox Content="Overwrite" IsChecked="{Binding AllowOverwrite}" 
-                                                      IsEnabled="{Binding ExistsInArchive}"
-                                                      VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </GridViewColumn.CellTemplate>
-                            </GridViewColumn>
-                        </GridView>
-                    </ListView.View>
-                </ListView>
-            </GroupBox>
-
-            <!-- Selection Actions -->
-            <StackPanel Grid.Row="5" Orientation="Horizontal" Margin="0,0,0,10">
-                <Button x:Name="SelectAllButton" Content="Select All" Width="100" 
-                        Margin="0,0,10,0" Click="SelectAllButton_Click" Padding="5"/>
-                <Button x:Name="DeselectAllButton" Content="Deselect All" Width="100" 
-                        Click="DeselectAllButton_Click" Padding="5"/>
-                <TextBlock x:Name="SelectionCountText" VerticalAlignment="Center" 
-                           Margin="20,0,0,0" FontSize="13" FontWeight="Bold"/>
-            </StackPanel>
-
-            <!-- Archive Button -->
-            <Button x:Name="ArchiveButton" Grid.Row="6" Content="Archive Selected Files" 
-                    Height="40" FontSize="16" FontWeight="Bold" 
-                    Click="ArchiveButton_Click" IsEnabled="False"
-                    Background="#FF4CAF50" Foreground="White">
-                <Button.Style>
-                    <Style TargetType="Button">
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="Button">
-                                    <Border Background="{TemplateBinding Background}" 
-                                            CornerRadius="5" BorderThickness="0">
-                                        <ContentPresenter HorizontalAlignment="Center" 
-                                                          VerticalAlignment="Center"/>
-                                    </Border>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                        <Style.Triggers>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Background" Value="#FFCCCCCC"/>
-                            </Trigger>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#FF45A049"/>
-                            </Trigger>
-                        </Style.Triggers>
-                    </Style>
-                </Button.Style>
-            </Button>
-        </Grid>
-
-        <!-- Horizontal GridSplitter -->
-        <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch" 
-                      VerticalAlignment="Center"
-                      Background="#FFE0E0E0" ShowsPreview="False"/>
-
-        <!-- Activity/Status Log Panel -->
-        <GroupBox Grid.Row="2" Header="Activity / Status" Padding="10">
-            <Grid>
+            <!-- Main Content Area -->
+            <Grid Grid.Row="0">
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <!-- Activity Log ListView -->
-                <ListView x:Name="ActivityLogListView" Grid.Row="0"
-                          FontFamily="Consolas" FontSize="11"
-                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                          ScrollViewer.VerticalScrollBarVisibility="Auto"
-                          Background="#FFF9F9F9"
-                          BorderBrush="#FFCCCCCC" BorderThickness="1">
-                    <ListView.View>
-                        <GridView>
-                            <GridViewColumn Header="Timestamp" Width="150">
-                                <GridViewColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding Timestamp}" FontWeight="SemiBold" 
-                                                   Foreground="#FF555555"/>
-                                    </DataTemplate>
-                                </GridViewColumn.CellTemplate>
-                            </GridViewColumn>
-                            <GridViewColumn Header="Message" Width="800">
-                                <GridViewColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding Message}" TextWrapping="Wrap">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsError}" Value="True">
-                                                            <Setter Property="Foreground" Value="Red"/>
-                                                            <Setter Property="FontWeight" Value="Bold"/>
-                                                        </DataTrigger>
-                                                        <DataTrigger Binding="{Binding IsWarning}" Value="True">
-                                                            <Setter Property="Foreground" Value="Orange"/>
-                                                            <Setter Property="FontWeight" Value="SemiBold"/>
-                                                        </DataTrigger>
-                                                        <DataTrigger Binding="{Binding IsSuccess}" Value="True">
-                                                            <Setter Property="Foreground" Value="Green"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
-                                    </DataTemplate>
-                                </GridViewColumn.CellTemplate>
-                            </GridViewColumn>
-                        </GridView>
-                    </ListView.View>
-                </ListView>
+                <!-- Folder Selection -->
+                <GroupBox Grid.Row="0" Header="Source Folder" Padding="10" Margin="0,0,0,10">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="FolderPathTextBox" Grid.Column="0" VerticalAlignment="Center" 
+                                 Padding="5" FontSize="14"/>
+                        <Button x:Name="BrowseButton" Grid.Column="1" Content="Browse..." 
+                                Width="100" Margin="10,0,0,0" Click="BrowseButton_Click" Padding="5"/>
+                    </Grid>
+                </GroupBox>
 
-                <!-- Clear Log Button -->
-                <Button x:Name="ClearLogButton" Grid.Row="1" Content="Clear Log" 
-                        Margin="0,10,0,0" Padding="5" Click="ClearLogButton_Click"/>
+                <!-- Search Field -->
+                <GroupBox Grid.Row="1" Header="Search Criteria" Padding="10" Margin="0,0,0,10">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="SearchTextBox" Grid.Column="0" VerticalAlignment="Center" 
+                                 Padding="5" FontSize="14" 
+                                 ToolTip="Enter file name search terms (all words must match)"/>
+                        <Button x:Name="ScanButton" Grid.Column="1" Content="Scan Files" 
+                                Width="120" Margin="10,0,0,0" Click="ScanButton_Click" 
+                                Padding="5" FontWeight="Bold"/>
+                    </Grid>
+                </GroupBox>
+
+                <!-- Progress Panel -->
+                <GroupBox Grid.Row="2" Header="Progress" Padding="10" Margin="0,0,0,10"
+                          x:Name="ProgressPanel" Visibility="Collapsed">
+                    <StackPanel>
+                        <TextBlock x:Name="ProgressText" FontSize="13" Margin="0,0,0,5" FontWeight="SemiBold"/>
+                        <ProgressBar x:Name="ProgressBar" Height="25" Minimum="0" Maximum="100"
+                                     Foreground="{DynamicResource ProgressBarBrush}"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- Archive Info -->
+                <GroupBox Grid.Row="3" Header="Archive Information" Padding="10" Margin="0,0,0,10"
+                          x:Name="ArchiveInfoPanel" Visibility="Collapsed">
+                    <StackPanel>
+                        <TextBlock x:Name="ArchiveExistsText" FontSize="13" Margin="0,0,0,5"/>
+                        <TextBlock x:Name="ArchiveFileCountText" FontSize="13"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- Preview List -->
+                <GroupBox Grid.Row="4" Header="Preview - Files Found" Padding="10" Margin="0,0,0,10">
+                    <ListView x:Name="FilesListView" SelectionMode="Single">
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn Header="Name" Width="400">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding FileName}" ToolTip="{Binding FullPath}"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="Size" Width="100">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding FileSizeFormatted}" TextAlignment="Right"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="Status" Width="150">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Status}">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{DynamicResource TextForegroundBrush}"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding ExistsInArchive}" Value="True">
+                                                                <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                                                                <Setter Property="FontWeight" Value="Bold"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="Action" Width="220">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal">
+                                                <CheckBox Content="Archive" IsChecked="{Binding IsSelected}" 
+                                                          Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                                <CheckBox Content="Overwrite" IsChecked="{Binding AllowOverwrite}" 
+                                                          IsEnabled="{Binding ExistsInArchive}"
+                                                          VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
+                </GroupBox>
+
+                <!-- Selection Actions -->
+                <StackPanel Grid.Row="5" Orientation="Horizontal" Margin="0,0,0,10">
+                    <Button x:Name="SelectAllButton" Content="Select All" Width="100" 
+                            Margin="0,0,10,0" Click="SelectAllButton_Click" Padding="5"/>
+                    <Button x:Name="DeselectAllButton" Content="Deselect All" Width="100" 
+                            Click="DeselectAllButton_Click" Padding="5"/>
+                    <TextBlock x:Name="SelectionCountText" VerticalAlignment="Center" 
+                               Margin="20,0,0,0" FontSize="13" FontWeight="Bold"/>
+                </StackPanel>
+
+                <!-- Archive Button -->
+                <Button x:Name="ArchiveButton" Grid.Row="6" Content="Archive Selected Files" 
+                        Height="40" FontSize="16" FontWeight="Bold" 
+                        Click="ArchiveButton_Click" IsEnabled="False"
+                        Style="{StaticResource ArchiveButtonStyle}"/>
             </Grid>
-        </GroupBox>
-    </Grid>
+
+            <!-- Horizontal GridSplitter -->
+            <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch" 
+                          VerticalAlignment="Center"
+                          Background="{DynamicResource SplitterBrush}" ShowsPreview="False"/>
+
+            <!-- Activity/Status Log Panel -->
+            <GroupBox Grid.Row="2" Header="Activity / Status" Padding="10">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Activity Log ListView -->
+                    <ListView x:Name="ActivityLogListView" Grid.Row="0"
+                              FontFamily="Consolas" FontSize="11"
+                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                              ScrollViewer.VerticalScrollBarVisibility="Auto">
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn Header="Timestamp" Width="150">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Timestamp}" FontWeight="SemiBold" 
+                                                       Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="Message" Width="800">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Message}" TextWrapping="Wrap">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{DynamicResource ConsoleTextBrush}"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsError}" Value="True">
+                                                                <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}"/>
+                                                                <Setter Property="FontWeight" Value="Bold"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsWarning}" Value="True">
+                                                                <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                                                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsSuccess}" Value="True">
+                                                                <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
+
+                    <!-- Clear Log Button -->
+                    <Button x:Name="ClearLogButton" Grid.Row="1" Content="Clear Log" 
+                            Margin="0,10,0,0" Padding="5" Click="ClearLogButton_Click"/>
+                </Grid>
+            </GroupBox>
+        </Grid>
+    </DockPanel>
 </Window>

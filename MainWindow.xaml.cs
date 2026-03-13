@@ -25,6 +25,7 @@ namespace FileArchiver
         private ObservableCollection<FileItemModel> _fileItems;
         private ObservableCollection<ActivityLogEntry> _activityLog;
         private bool _isProcessing;
+        private AppTheme _currentTheme;
 
         public MainWindow()
         {
@@ -47,6 +48,11 @@ namespace FileArchiver
             // Log application start
             LogActivity("Application started");
             LogActivity($"Default folder set to: {downloadsPath}");
+
+            // Initialize theme
+            _currentTheme = ThemeManager.LoadThemePreference();
+            UpdateThemeMenuChecks();
+            LogActivity($"Theme set to: {_currentTheme}");
         }
 
         private void LogActivity(string message, bool isError = false, bool isWarning = false, bool isSuccess = false)
@@ -513,6 +519,58 @@ namespace FileArchiver
             {
                 UpdateSelectionCount(); // This will set the proper state for ArchiveButton
             }
+        }
+
+        private void LightTheme_Click(object sender, RoutedEventArgs e)
+        {
+            _currentTheme = AppTheme.Light;
+            ThemeManager.ApplyTheme(_currentTheme);
+            ThemeManager.SaveThemePreference(_currentTheme);
+            UpdateThemeMenuChecks();
+            LogActivity("Theme changed to Light");
+        }
+
+        private void DarkTheme_Click(object sender, RoutedEventArgs e)
+        {
+            _currentTheme = AppTheme.Dark;
+            ThemeManager.ApplyTheme(_currentTheme);
+            ThemeManager.SaveThemePreference(_currentTheme);
+            UpdateThemeMenuChecks();
+            LogActivity("Theme changed to Dark");
+        }
+
+        private void SystemTheme_Click(object sender, RoutedEventArgs e)
+        {
+            _currentTheme = AppTheme.System;
+            ThemeManager.ApplyTheme(_currentTheme);
+            ThemeManager.SaveThemePreference(_currentTheme);
+            UpdateThemeMenuChecks();
+            var systemTheme = ThemeManager.GetSystemTheme();
+            LogActivity($"Theme changed to System (currently {systemTheme})");
+        }
+
+        private void UpdateThemeMenuChecks()
+        {
+            LightThemeMenuItem.IsChecked = (_currentTheme == AppTheme.Light);
+            DarkThemeMenuItem.IsChecked = (_currentTheme == AppTheme.Dark);
+            SystemThemeMenuItem.IsChecked = (_currentTheme == AppTheme.System);
+        }
+
+        private void Exit_Click(object sender, RoutedEventArgs e)
+        {
+            LogActivity("Application closing");
+            Application.Current.Shutdown();
+        }
+
+        private void About_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show(
+                "File Archiver v1.0\n\n" +
+                "A utility for organizing and archiving files.\n\n" +
+                "© 2026 File Archiver",
+                "About File Archiver",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
         }
     }
 }
