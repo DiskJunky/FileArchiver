@@ -10,16 +10,30 @@ using Microsoft.Win32;
 
 namespace FileArchiver
 {
+    // Activity Log Entry Model
+    public class ActivityLogEntry
+    {
+        public string Timestamp { get; set; }
+        public string Message { get; set; }
+        public bool IsError { get; set; }
+        public bool IsWarning { get; set; }
+        public bool IsSuccess { get; set; }
+    }
+
     public partial class MainWindow : Window
     {
         private ObservableCollection<FileItemModel> _fileItems;
+        private ObservableCollection<ActivityLogEntry> _activityLog;
         private bool _isProcessing;
 
         public MainWindow()
         {
             InitializeComponent();
             _fileItems = new ObservableCollection<FileItemModel>();
+            _activityLog = new ObservableCollection<ActivityLogEntry>();
+            
             FilesListView.ItemsSource = _fileItems;
+            ActivityLogListView.ItemsSource = _activityLog;
 
             // Pre-fill with Downloads folder
             string downloadsPath = Path.Combine(
@@ -29,6 +43,39 @@ namespace FileArchiver
 
             // Subscribe to property changes for status updates
             _fileItems.CollectionChanged += (s, e) => UpdateSelectionCount();
+
+            // Log application start
+            LogActivity("Application started");
+            LogActivity($"Default folder set to: {downloadsPath}");
+        }
+
+        private void LogActivity(string message, bool isError = false, bool isWarning = false, bool isSuccess = false)
+        {
+            string timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            
+            var logEntry = new ActivityLogEntry
+            {
+                Timestamp = timestamp,
+                Message = message,
+                IsError = isError,
+                IsWarning = isWarning,
+                IsSuccess = isSuccess
+            };
+            
+            // Insert at the beginning to show most recent first
+            _activityLog.Insert(0, logEntry);
+            
+            // Optional: Limit log size to prevent memory issues (keep last 500 entries)
+            if (_activityLog.Count > 500)
+            {
+                _activityLog.RemoveAt(_activityLog.Count - 1);
+            }
+        }
+
+        private void ClearLogButton_Click(object sender, RoutedEventArgs e)
+        {
+            _activityLog.Clear();
+            LogActivity("Activity log cleared");
         }
 
         private void BrowseButton_Click(object sender, RoutedEventArgs e)
@@ -42,6 +89,7 @@ namespace FileArchiver
             if (dialog.ShowDialog() == true)
             {
                 FolderPathTextBox.Text = dialog.FolderName;
+                LogActivity($"Folder changed to: {dialog.FolderName}");
             }
         }
 
@@ -55,6 +103,7 @@ namespace FileArchiver
             // Validation
             if (string.IsNullOrWhiteSpace(folderPath))
             {
+                LogActivity("No folder path specified", isError: true);
                 MessageBox.Show("Please specify a folder path.", "Validation Error",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
@@ -62,6 +111,7 @@ namespace FileArchiver
 
             if (!Directory.Exists(folderPath))
             {
+                LogActivity($"Folder does not exist: {folderPath}", isError: true);
                 MessageBox.Show("The specified folder does not exist.", "Validation Error",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
@@ -69,10 +119,13 @@ namespace FileArchiver
 
             if (string.IsNullOrWhiteSpace(searchText))
             {
+                LogActivity("No search criteria specified", isError: true);
                 MessageBox.Show("Please enter search terms.", "Validation Error",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
+
+            LogActivity($"Starting scan for: '{searchText}' in {folderPath}");
 
             // Disable UI during scan
             SetUIEnabled(false);
@@ -105,6 +158,7 @@ namespace FileArchiver
                 var allFiles = await Task.Run(() =>
                     Directory.GetFiles(folderPath, "*.*", SearchOption.TopDirectoryOnly));
 
+                LogActivity($"Found {allFiles.Length} total files in folder");
                 ShowProgress($"Found {allFiles.Length} files. Analyzing matches...", 10);
 
                 int totalFiles = allFiles.Length;
@@ -175,21 +229,31 @@ namespace FileArchiver
                 UpdateArchiveInfo(archiveFolderPath);
 
                 ShowProgress($"Scan complete! Found {matchedFiles} matching file(s).", 100);
+                LogActivity($"Scan complete: {matchedFiles} file(s) matched out of {totalFiles} total", isSuccess: true);
+                
                 await Task.Delay(800); // Brief pause to show completion
 
                 if (matchedFiles > 0)
                 {
+                    int existingCount = _fileItems.Count(f => f.ExistsInArchive);
+                    if (existingCount > 0)
+                    {
+                        LogActivity($"{existingCount} file(s) already exist in archive", isWarning: true);
+                    }
+                    
                     MessageBox.Show($"Found {_fileItems.Count} matching file(s).", "Scan Complete",
                         MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 else
                 {
+                    LogActivity("No matching files found", isWarning: true);
                     MessageBox.Show("No files found matching the search criteria.", "Scan Complete",
                         MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
             catch (Exception ex)
             {
+                LogActivity($"Error during scan: {ex.Message}", isError: true);
                 MessageBox.Show($"Error scanning folder: {ex.Message}", "Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
@@ -206,12 +270,16 @@ namespace FileArchiver
 
                 int fileCount = Directory.GetFiles(archiveFolderPath).Length;
                 ArchiveFileCountText.Text = $"Files in archive: {fileCount}";
+                
+                LogActivity($"Archive folder exists with {fileCount} file(s)");
             }
             else
             {
                 ArchiveExistsText.Text = "✗ Archive folder does not exist (will be created)";
                 ArchiveExistsText.Foreground = System.Windows.Media.Brushes.Gray;
                 ArchiveFileCountText.Text = "Files in archive: 0";
+                
+                LogActivity("Archive folder does not exist (will be created)", isWarning: true);
             }
 
             ArchiveInfoPanel.Visibility = Visibility.Visible;
@@ -219,20 +287,37 @@ namespace FileArchiver
 
         private void SelectAllButton_Click(object sender, RoutedEventArgs e)
         {
+            int count = 0;
             foreach (var item in _fileItems)
             {
                 if (!item.ExistsInArchive || item.AllowOverwrite)
                 {
-                    item.IsSelected = true;
+                    if (!item.IsSelected)
+                    {
+                        item.IsSelected = true;
+                        count++;
+                    }
                 }
+            }
+            
+            if (count > 0)
+            {
+                LogActivity($"Selected all files ({count} file(s))");
             }
         }
 
         private void DeselectAllButton_Click(object sender, RoutedEventArgs e)
         {
+            int count = _fileItems.Count(f => f.IsSelected);
+            
             foreach (var item in _fileItems)
             {
                 item.IsSelected = false;
+            }
+            
+            if (count > 0)
+            {
+                LogActivity($"Deselected all files ({count} file(s))");
             }
         }
 
@@ -257,6 +342,7 @@ namespace FileArchiver
 
             if (filesToArchive.Count == 0)
             {
+                LogActivity("No files selected for archiving", isWarning: true);
                 MessageBox.Show("No files selected for archiving.", "Information",
                     MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
@@ -269,7 +355,12 @@ namespace FileArchiver
                 MessageBoxImage.Question);
 
             if (result != MessageBoxResult.Yes)
+            {
+                LogActivity("Archive operation cancelled by user", isWarning: true);
                 return;
+            }
+
+            LogActivity($"Starting archive operation: {filesToArchive.Count} file(s) to {archiveFolderPath}");
 
             // Disable UI during archive
             SetUIEnabled(false);
@@ -294,13 +385,20 @@ namespace FileArchiver
                 ShowProgress("Preparing archive...", 0);
 
                 // Create archive folder if it doesn't exist
+                bool folderCreated = false;
                 await Task.Run(() =>
                 {
                     if (!Directory.Exists(archiveFolderPath))
                     {
                         Directory.CreateDirectory(archiveFolderPath);
+                        folderCreated = true;
                     }
                 });
+
+                if (folderCreated)
+                {
+                    LogActivity($"Created archive folder: {archiveFolderPath}", isSuccess: true);
+                }
 
                 int successCount = 0;
                 int errorCount = 0;
@@ -328,17 +426,32 @@ namespace FileArchiver
                             // Move the file (overwrite if allowed)
                             File.Move(fileItem.FullPath, destinationPath, fileItem.AllowOverwrite);
                             successCount++;
+                            
+                            Dispatcher.Invoke(() =>
+                            {
+                                string action = fileItem.AllowOverwrite && fileItem.ExistsInArchive ? "Overwrote" : "Archived";
+                                LogActivity($"{action}: {fileItem.FileName}", isSuccess: true);
+                            });
                         }
                         catch (Exception ex)
                         {
                             errorCount++;
                             errors.Add($"{fileItem.FileName}: {ex.Message}");
+                            
+                            Dispatcher.Invoke(() =>
+                            {
+                                LogActivity($"Error archiving {fileItem.FileName}: {ex.Message}", isError: true);
+                            });
                         }
                     }
                 });
 
                 ShowProgress($"Archive complete! {successCount} file(s) archived.", 100);
                 await Task.Delay(800); // Brief pause to show completion
+
+                // Log summary
+                LogActivity($"Archive complete: {successCount} succeeded, {errorCount} failed", 
+                    isError: errorCount > 0, isSuccess: errorCount == 0);
 
                 // Show results
                 string message = $"Archive complete!\n\nSuccessfully archived: {successCount} file(s)";
@@ -356,11 +469,13 @@ namespace FileArchiver
                 // Refresh the scan
                 if (successCount > 0)
                 {
+                    LogActivity("Refreshing file list...");
                     ScanButton_Click(null, null);
                 }
             }
             catch (Exception ex)
             {
+                LogActivity($"Critical error during archive: {ex.Message}", isError: true);
                 MessageBox.Show($"Error during archiving: {ex.Message}", "Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
