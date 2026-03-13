@@ -41,19 +41,19 @@
         <!-- Menu Bar -->
         <Menu DockPanel.Dock="Top" Background="{DynamicResource ControlBackgroundBrush}">
             <MenuItem Header="_File" Foreground="{DynamicResource TextForegroundBrush}">
-                <MenuItem Header="_Exit" Click="Exit_Click"/>
+                <MenuItem Header="_Exit" Command="{Binding ExitCommand}"/>
             </MenuItem>
             <MenuItem Header="_Theme" Foreground="{DynamicResource TextForegroundBrush}">
-                <MenuItem Header="_Light" Click="LightTheme_Click" 
-                          x:Name="LightThemeMenuItem"/>
-                <MenuItem Header="_Dark" Click="DarkTheme_Click" 
-                          x:Name="DarkThemeMenuItem"/>
+                <MenuItem Header="_Light" Command="{Binding LightThemeCommand}" 
+                          IsChecked="{Binding IsLightThemeChecked}" x:Name="LightThemeMenuItem"/>
+                <MenuItem Header="_Dark" Command="{Binding DarkThemeCommand}" 
+                          IsChecked="{Binding IsDarkThemeChecked}" x:Name="DarkThemeMenuItem"/>
                 <Separator/>
-                <MenuItem Header="_System Default" Click="SystemTheme_Click" 
-                          x:Name="SystemThemeMenuItem" IsChecked="True"/>
+                <MenuItem Header="_System Default" Command="{Binding SystemThemeCommand}" 
+                          IsChecked="{Binding IsSystemThemeChecked}" x:Name="SystemThemeMenuItem"/>
             </MenuItem>
             <MenuItem Header="_Help" Foreground="{DynamicResource TextForegroundBrush}">
-                <MenuItem Header="_About" Click="About_Click"/>
+                <MenuItem Header="_About" Command="{Binding AboutCommand}"/>
             </MenuItem>
         </Menu>
 
@@ -77,11 +77,13 @@
             </StatusBar.ItemsPanel>
 
             <!-- Progress Section -->
-            <StatusBarItem Grid.Column="0" x:Name="ProgressStatusItem" Visibility="Collapsed">
+            <StatusBarItem Grid.Column="0" x:Name="ProgressStatusItem" 
+                           Visibility="{Binding ProgressStatusVisibility}">
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock x:Name="ProgressText" FontSize="12" Margin="0,0,10,0" 
+                    <TextBlock x:Name="ProgressText" Text="{Binding ProgressText}" FontSize="12" Margin="0,0,10,0" 
                                VerticalAlignment="Center"/>
                     <ProgressBar x:Name="ProgressBar" Width="200" Height="18" Minimum="0" Maximum="100"
+                                 Value="{Binding ProgressValue}"
                                  VerticalAlignment="Center" Foreground="{DynamicResource ProgressBarBrush}"/>
                 </StackPanel>
             </StatusBarItem>
@@ -90,22 +92,25 @@
             <StatusBarItem Grid.Column="1"/>
 
             <!-- Archive Info Section -->
-            <StatusBarItem Grid.Column="2" x:Name="ArchiveInfoStatusItem" Visibility="Collapsed">
+            <StatusBarItem Grid.Column="2" x:Name="ArchiveInfoStatusItem" 
+                           Visibility="{Binding ArchiveInfoStatusVisibility}">
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock x:Name="ArchiveExistsText" FontSize="12" Margin="0,0,15,0" 
+                    <TextBlock x:Name="ArchiveExistsText" Text="{Binding ArchiveExistsText}" FontSize="12" Margin="0,0,15,0" 
+                               Foreground="{Binding ArchiveExistsColor}"
                                VerticalAlignment="Center"/>
-                    <TextBlock x:Name="ArchiveFileCountText" FontSize="12" 
+                    <TextBlock x:Name="ArchiveFileCountText" Text="{Binding ArchiveFileCountText}" FontSize="12" 
                                VerticalAlignment="Center"/>
                 </StackPanel>
             </StatusBarItem>
 
             <!-- Separator -->
-            <Separator Grid.Column="3" x:Name="StatusSeparator" Visibility="Collapsed"/>
+            <Separator Grid.Column="3" x:Name="StatusSeparator" 
+                       Visibility="{Binding StatusSeparatorVisibility}"/>
 
             <!-- Log Folder Link -->
             <StatusBarItem Grid.Column="4">
                 <TextBlock VerticalAlignment="Center">
-                    <Hyperlink Click="OpenLogFolder_Click" 
+                    <Hyperlink Command="{Binding OpenLogFolderCommand}" 
                                ToolTip="Click to open the log folder">
                         <Run Text="📁 Log Folder"/>
                     </Hyperlink>
@@ -118,6 +123,7 @@
             <!-- Ready Status -->
             <StatusBarItem Grid.Column="6">
                 <TextBlock x:Name="ReadyStatusText" Text="Ready" FontSize="12" 
+                           Visibility="{Binding ReadyStatusVisibility}"
                            VerticalAlignment="Center"/>
             </StatusBarItem>
         </StatusBar>
@@ -158,27 +164,35 @@
                                    VerticalAlignment="Center" Margin="0,0,10,0"
                                    FontWeight="SemiBold" FontSize="13"/>
                         <TextBox x:Name="FolderPathTextBox" Grid.Row="0" Grid.Column="1" 
+                                 Text="{Binding FolderPath, UpdateSourceTrigger=PropertyChanged}"
+                                 IsEnabled="{Binding IsUIEnabled}"
                                  VerticalAlignment="Center" Padding="5" FontSize="14"/>
                         <Button x:Name="BrowseButton" Grid.Row="0" Grid.Column="2" 
                                 Content="Browse..." Margin="10,0,0,0" 
-                                Click="BrowseButton_Click" Padding="5"/>
+                                Command="{Binding BrowseCommand}" 
+                                IsEnabled="{Binding IsUIEnabled}"
+                                Padding="5"/>
 
                         <!-- Search Criteria Row -->
                         <TextBlock Grid.Row="2" Grid.Column="0" Text="Search Criteria:" 
                                    VerticalAlignment="Center" Margin="0,0,10,0"
                                    FontWeight="SemiBold" FontSize="13"/>
                         <TextBox x:Name="SearchTextBox" Grid.Row="2" Grid.Column="1" 
+                                 Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                 IsEnabled="{Binding IsUIEnabled}"
                                  VerticalAlignment="Center" Padding="5" FontSize="14" 
                                  ToolTip="Enter file name search terms (all words must match)"/>
                         <Button x:Name="ScanButton" Grid.Row="2" Grid.Column="2" 
                                 Content="Scan Files" Margin="10,0,0,0" 
-                                Click="ScanButton_Click" Padding="5" FontWeight="Bold"/>
+                                Command="{Binding ScanCommand}" 
+                                IsEnabled="{Binding IsScanButtonEnabled}"
+                                Padding="5" FontWeight="Bold"/>
                     </Grid>
                 </GroupBox>
 
                 <!-- Preview List -->
                 <GroupBox Grid.Row="1" Header="Preview - Files Found" Padding="10" Margin="0,0,0,10">
-                    <ListView x:Name="FilesListView" SelectionMode="Single">
+                    <ListView x:Name="FilesListView" ItemsSource="{Binding FileItems}" SelectionMode="Single">
                         <ListView.View>
                             <GridView>
                                 <GridViewColumn Header="Name" Width="400">
@@ -243,17 +257,22 @@
                     <!-- Left: Selection Buttons -->
                     <StackPanel Grid.Column="0" Orientation="Horizontal">
                         <Button x:Name="SelectAllButton" Content="Select All" Width="100" 
-                                Margin="0,0,10,0" Click="SelectAllButton_Click" Padding="5"/>
+                                Margin="0,0,10,0" Command="{Binding SelectAllCommand}" 
+                                IsEnabled="{Binding IsUIEnabled}"
+                                Padding="5"/>
                         <Button x:Name="DeselectAllButton" Content="Deselect All" Width="100" 
-                                Click="DeselectAllButton_Click" Padding="5"/>
-                        <TextBlock x:Name="SelectionCountText" VerticalAlignment="Center" 
+                                Command="{Binding DeselectAllCommand}"
+                                IsEnabled="{Binding IsUIEnabled}"
+                                Padding="5"/>
+                        <TextBlock x:Name="SelectionCountText" Text="{Binding SelectionCountText}" VerticalAlignment="Center" 
                                    Margin="20,0,0,0" FontSize="13" FontWeight="Bold"/>
                     </StackPanel>
 
                     <!-- Right: Archive Button -->
                     <Button x:Name="ArchiveButton" Grid.Column="2" Content="Archive Selected Files" 
                             Width="250" Height="40" FontSize="16" FontWeight="Bold" 
-                            Click="ArchiveButton_Click" IsEnabled="False"
+                            Command="{Binding ArchiveCommand}"
+                            IsEnabled="{Binding IsArchiveButtonEnabled}"
                             Style="{StaticResource ArchiveButtonStyle}"/>
                 </Grid>
             </Grid>
@@ -272,7 +291,7 @@
                     </Grid.RowDefinitions>
 
                     <!-- Activity Log ListView -->
-                    <ListView x:Name="ActivityLogListView" Grid.Row="0"
+                    <ListView x:Name="ActivityLogListView" ItemsSource="{Binding ActivityLog}" Grid.Row="0"
                               FontFamily="Consolas" FontSize="11"
                               ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                               ScrollViewer.VerticalScrollBarVisibility="Auto">
@@ -318,7 +337,7 @@
 
                     <!-- Clear Log Button -->
                     <Button x:Name="ClearLogButton" Grid.Row="1" Content="Clear Log" 
-                            Margin="0,10,0,0" Padding="5" Click="ClearLogButton_Click"/>
+                            Margin="0,10,0,0" Padding="5" Command="{Binding ClearLogCommand}"/>
                 </Grid>
             </GroupBox>
         </Grid>
