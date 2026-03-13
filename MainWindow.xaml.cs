@@ -38,9 +38,13 @@ namespace FileArchiver
     /// Main window for the File Archiver application.
     /// Provides the UI for file search, preview, and archiving functionality.
     /// Uses MVVM pattern with MainWindowViewModel for business logic.
+    /// Code-behind is minimal and only handles window lifecycle and UI events,
+    /// delegating all business logic to the ViewModel.
     /// </summary>
     public partial class MainWindow : Window
     {
+        private MainWindowViewModel _viewModel;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="MainWindow"/> class.
         /// Sets up the ViewModel and UI bindings.
@@ -48,23 +52,25 @@ namespace FileArchiver
         public MainWindow()
         {
             InitializeComponent();
-            this.DataContext = new MainWindowViewModel();
+            _viewModel = new MainWindowViewModel();
+            this.DataContext = _viewModel;
         }
 
         /// <summary>
         /// Handles the window loaded event.
-        /// Restores the window state (size, position, and splitter location) from saved settings.
+        /// Delegates to ViewModel to restore window state (size, position, and splitter location).
         /// </summary>
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            SettingsManager.LoadWindowState(out double width, out double height, out double left, out double top, out double row0Height);
+            // Get restored window state from ViewModel
+            var (width, height, left, top, row0Height) = _viewModel.RestoreWindowState();
 
-            // Restore window dimensions
+            // Apply window dimensions
             this.Width = width;
             this.Height = height;
 
-            // Restore window position - validate that it's within reasonable screen bounds
-            // Only restore position if it appears to be valid (not negative and not too far off-screen)
+            // Apply window position if valid (within screen bounds)
+            // Validate that position is not too far off-screen to prevent inaccessible windows
             if (left >= -100 && top >= -100 && left < SystemParameters.VirtualScreenWidth + 100 && 
                 top < SystemParameters.VirtualScreenHeight + 100)
             {
@@ -73,49 +79,29 @@ namespace FileArchiver
                 this.WindowStartupLocation = WindowStartupLocation.Manual;
             }
 
-            // Restore main content area splitter position
-            var mainGrid = this.FindName("MainContentGrid") as Grid;
-            if (mainGrid != null && mainGrid.RowDefinitions.Count > 0)
-            {
-                // Set the first row height to the saved value
-                mainGrid.RowDefinitions[0].Height = new GridLength(row0Height);
-            }
+            // Apply splitter position
+            ApplySplitterPosition(row0Height);
         }
 
         /// <summary>
         /// Handles the window closing event.
-        /// Saves the current window state and ensures proper cleanup.
+        /// Delegates to ViewModel to save window state.
         /// </summary>
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            // Save window state before closing
-            SettingsManager.SaveWindowState(this.Width, this.Height, this.Left, this.Top, 
-                GetMainGridRow0Height());
+            // Get current window state and save to ViewModel
+            double splitterRow0Height = GetMainGridRow0Height();
+            _viewModel.SaveWindowState(this.Width, this.Height, this.Left, this.Top, splitterRow0Height);
         }
 
         /// <summary>
         /// Handles the window closed event.
-        /// Ensures Serilog is properly flushed and closed.
+        /// Ensures ViewModel cleanup and Serilog shutdown occur.
         /// </summary>
         protected override void OnClosed(EventArgs e)
         {
-            var viewModel = this.DataContext as MainWindowViewModel;
-            viewModel?.OnWindowClosing();
+            _viewModel?.OnWindowClosing();
             base.OnClosed(e);
-        }
-
-        /// <summary>
-        /// Gets the height of the main grid's first row (upper content area).
-        /// </summary>
-        /// <returns>The height of the first row, or a default value if the grid cannot be accessed.</returns>
-        private double GetMainGridRow0Height()
-        {
-            var mainGrid = this.FindName("MainContentGrid") as Grid;
-            if (mainGrid != null && mainGrid.RowDefinitions.Count > 0)
-            {
-                return mainGrid.RowDefinitions[0].ActualHeight;
-            }
-            return 400; // Default fallback
         }
 
         /// <summary>
@@ -126,13 +112,40 @@ namespace FileArchiver
         {
             if (e.Key == System.Windows.Input.Key.Return)
             {
-                var viewModel = this.DataContext as MainWindowViewModel;
-                if (viewModel?.ScanCommand != null && viewModel.ScanCommand.CanExecute(null))
+                // Get ScanCommand from ViewModel
+                if (_viewModel?.ScanCommand != null && _viewModel.ScanCommand.CanExecute(null))
                 {
-                    viewModel.ScanCommand.Execute(null);
+                    _viewModel.ScanCommand.Execute(null);
                     e.Handled = true;
                 }
             }
+        }
+
+        /// <summary>
+        /// Applies the saved splitter position to the main content grid.
+        /// </summary>
+        /// <param name="row0Height">The height of the first row (upper content area).</param>
+        private void ApplySplitterPosition(double row0Height)
+        {
+            var mainGrid = this.FindName("MainContentGrid") as Grid;
+            if (mainGrid != null && mainGrid.RowDefinitions.Count > 0)
+            {
+                mainGrid.RowDefinitions[0].Height = new GridLength(row0Height);
+            }
+        }
+
+        /// <summary>
+        /// Gets the height of the main grid's first row (upper content area).
+        /// </summary>
+        /// <returns>The actual height of the first row, or a default value if the grid cannot be accessed.</returns>
+        private double GetMainGridRow0Height()
+        {
+            var mainGrid = this.FindName("MainContentGrid") as Grid;
+            if (mainGrid != null && mainGrid.RowDefinitions.Count > 0)
+            {
+                return mainGrid.RowDefinitions[0].ActualHeight;
+            }
+            return 400; // Default fallback
         }
     }
 }

@@ -1,11 +1,6 @@
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using Microsoft.Win32;
@@ -1067,6 +1062,35 @@ namespace FileArchiver
 
             Log.Information("Application shutdown");
             Log.CloseAndFlush();
+        }
+
+        /// <summary>
+        /// Restores the window state (size, position, and splitter location) from saved settings.
+        /// Should be called when the window is loaded.
+        /// </summary>
+        /// <returns>A tuple containing the restored window dimensions and splitter position.</returns>
+        public (double Width, double Height, double Left, double Top, double Row0Height) RestoreWindowState()
+        {
+            SettingsManager.LoadWindowState(out double width, out double height, out double left, out double top, out double row0Height);
+            Log.Information("Restored window state: Width={Width}, Height={Height}, Left={Left}, Top={Top}, Row0Height={Row0Height}",
+                width, height, left, top, row0Height);
+            return (width, height, left, top, row0Height);
+        }
+
+        /// <summary>
+        /// Saves the current window state (size, position, and splitter location) to settings.
+        /// Should be called when the window is closing.
+        /// </summary>
+        /// <param name="width">The current window width.</param>
+        /// <param name="height">The current window height.</param>
+        /// <param name="left">The current window left position.</param>
+        /// <param name="top">The current window top position.</param>
+        /// <param name="row0Height">The current height of the main grid's first row (splitter position).</param>
+        public void SaveWindowState(double width, double height, double left, double top, double row0Height)
+        {
+            SettingsManager.SaveWindowState(width, height, left, top, row0Height);
+            Log.Information("Saved window state: Width={Width}, Height={Height}, Left={Left}, Top={Top}, Row0Height={Row0Height}",
+                width, height, left, top, row0Height);
         }
 
         #endregion
