@@ -27,14 +27,10 @@ namespace FileArchiver
 
     /// <summary>
     /// Manages application theme selection, persistence, and system theme detection.
+    /// Theme preferences are persisted using .NET application settings.
     /// </summary>
     public static class ThemeManager
     {
-        /// <summary>
-        /// Registry key name for storing the user's theme preference.
-        /// </summary>
-        private const string ThemePreferenceKey = "FileArchiver_ThemePreference";
-
         /// <summary>
         /// Applies the specified theme to the application.
         /// If System theme is selected, automatically detects the current Windows theme.
@@ -92,56 +88,41 @@ namespace FileArchiver
         }
 
         /// <summary>
-        /// Saves the user's theme preference to the Windows registry.
+        /// Saves the user's theme preference to application settings.
         /// </summary>
         /// <param name="theme">The theme preference to save.</param>
         /// <remarks>
-        /// Saves to HKEY_CURRENT_USER\Software\FileArchiver.
-        /// Fails silently if registry access is denied.
+        /// Settings are persisted to user.config file via SettingsManager.
+        /// Fails silently if settings cannot be written.
         /// </remarks>
         public static void SaveThemePreference(AppTheme theme)
         {
-            try
-            {
-                using (var key = Registry.CurrentUser.CreateSubKey(
-                    @"Software\FileArchiver"))
-                {
-                    key?.SetValue(ThemePreferenceKey, theme.ToString());
-                }
-            }
-            catch
-            {
-                // Silently fail if we can't write to registry
-            }
+            SettingsManager.SaveThemePreference(theme.ToString());
         }
 
         /// <summary>
-        /// Loads the user's saved theme preference from the Windows registry.
+        /// Loads the user's saved theme preference from application settings.
         /// </summary>
         /// <returns>
         /// The saved theme preference, or <see cref="AppTheme.System"/> if no preference is found.
         /// </returns>
         /// <remarks>
-        /// Reads from HKEY_CURRENT_USER\Software\FileArchiver.
-        /// Defaults to <see cref="AppTheme.System"/> if the registry key doesn't exist or cannot be read.
+        /// Reads from user.config file via SettingsManager.
+        /// Defaults to <see cref="AppTheme.System"/> if the setting is empty or cannot be read.
         /// </remarks>
         public static AppTheme LoadThemePreference()
         {
             try
             {
-                using (var key = Registry.CurrentUser.OpenSubKey(
-                    @"Software\FileArchiver"))
+                string themeString = SettingsManager.LoadThemePreference();
+                if (Enum.TryParse<AppTheme>(themeString, out var theme))
                 {
-                    var value = key?.GetValue(ThemePreferenceKey);
-                    if (value != null && Enum.TryParse<AppTheme>(value.ToString(), out var theme))
-                    {
-                        return theme;
-                    }
+                    return theme;
                 }
             }
             catch
             {
-                // Silently fail if we can't read from registry
+                // Silently fail if we can't read from settings
             }
 
             return AppTheme.System; // Default to system theme

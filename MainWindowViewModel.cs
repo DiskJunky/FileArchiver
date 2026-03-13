@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
@@ -55,6 +56,11 @@ namespace FileArchiver
         private ICommand _exitCommand;
         private ICommand _aboutCommand;
 
+        // Debounce timers for auto-save functionality
+        private Timer _folderPathSaveTimer;
+        private Timer _searchTextSaveTimer;
+        private const int DebounceDelayMs = 500; // Wait 500ms after user stops typing
+
         /// <summary>
         /// Initializes a new instance of the <see cref="MainWindowViewModel"/> class.
         /// Sets up collections, initializes Serilog, and loads persisted preferences.
@@ -80,10 +86,9 @@ namespace FileArchiver
             // Subscribe to file items collection changes
             _fileItems.CollectionChanged += (s, e) => UpdateSelectionCount();
 
-            // Set default folder to Downloads
-            _folderPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                "Downloads");
+            // Load last used folder path from registry, default to Downloads
+            _folderPath = SettingsManager.LoadLastSourceFolder();
+            _searchText = SettingsManager.LoadLastSearchCriteria();
 
             // Initialize UI state
             _isUIEnabled = true;
@@ -96,7 +101,7 @@ namespace FileArchiver
 
             // Log application start
             LogActivity("Application started");
-            LogActivity($"Default folder set to: {_folderPath}");
+            LogActivity($"Source folder loaded: {_folderPath}");
             LogActivity($"Log folder: {_logFolderPath}");
 
             // Initialize and load theme
@@ -127,20 +132,46 @@ namespace FileArchiver
 
         /// <summary>
         /// Gets or sets the folder path to scan.
+        /// Changes are automatically saved to registry with debouncing (500ms delay).
         /// </summary>
         public string FolderPath
         {
             get => _folderPath;
-            set => SetField(ref _folderPath, value);
+            set
+            {
+                if (SetField(ref _folderPath, value))
+                {
+                    // Reset and restart the debounce timer when folder path changes
+                    _folderPathSaveTimer?.Dispose();
+                    _folderPathSaveTimer = new Timer(
+                        _ => SettingsManager.SaveLastSourceFolder(value),
+                        null,
+                        DebounceDelayMs,
+                        Timeout.Infinite);
+                }
+            }
         }
 
         /// <summary>
         /// Gets or sets the search criteria text.
+        /// Changes are automatically saved to registry with debouncing (500ms delay).
         /// </summary>
         public string SearchText
         {
             get => _searchText;
-            set => SetField(ref _searchText, value);
+            set
+            {
+                if (SetField(ref _searchText, value))
+                {
+                    // Reset and restart the debounce timer when search text changes
+                    _searchTextSaveTimer?.Dispose();
+                    _searchTextSaveTimer = new Timer(
+                        _ => SettingsManager.SaveLastSearchCriteria(value),
+                        null,
+                        DebounceDelayMs,
+                        Timeout.Infinite);
+                }
+            }
         }
 
         /// <summary>
@@ -553,6 +584,7 @@ namespace FileArchiver
 
         /// <summary>
         /// Opens a folder browser dialog to select a folder.
+        /// The selected folder is automatically saved to registry via property change.
         /// </summary>
         private void BrowseForFolder()
         {
@@ -1015,9 +1047,18 @@ namespace FileArchiver
 
         /// <summary>
         /// Flushes and closes Serilog on application shutdown.
+        /// Also disposes of any pending debounce timers.
         /// </summary>
         public void OnWindowClosing()
         {
+            // Dispose of debounce timers
+            _folderPathSaveTimer?.Dispose();
+            _searchTextSaveTimer?.Dispose();
+
+            // Ensure final settings are saved
+            SettingsManager.SaveLastSourceFolder(FolderPath);
+            SettingsManager.SaveLastSearchCriteria(SearchText);
+
             Log.Information("Application shutdown");
             Log.CloseAndFlush();
         }
