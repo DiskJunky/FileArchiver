@@ -267,28 +267,46 @@ namespace FileArchiver
             UpdateSelectionCount();
         }
 
+        private void ShowProgress(string message, int progress)
+        {
+            ProgressStatusItem.Visibility = Visibility.Visible;
+            ReadyStatusText.Visibility = Visibility.Collapsed;
+            ProgressText.Text = message;
+            ProgressBar.Value = progress;
+        }
+
+        private void HideProgress()
+        {
+            ProgressStatusItem.Visibility = Visibility.Collapsed;
+            ReadyStatusText.Visibility = Visibility.Visible;
+            ReadyStatusText.Text = "Ready";
+            ProgressBar.Value = 0;
+            ProgressText.Text = string.Empty;
+        }
+
         private void UpdateArchiveInfo(string archiveFolderPath)
         {
             if (Directory.Exists(archiveFolderPath))
             {
-                ArchiveExistsText.Text = "✓ Archive folder exists";
+                ArchiveExistsText.Text = "✓ Archive exists";
                 ArchiveExistsText.Foreground = System.Windows.Media.Brushes.Green;
 
                 int fileCount = Directory.GetFiles(archiveFolderPath).Length;
-                ArchiveFileCountText.Text = $"Files in archive: {fileCount}";
+                ArchiveFileCountText.Text = $"{fileCount} file(s)";
                 
                 LogActivity($"Archive folder exists with {fileCount} file(s)");
             }
             else
             {
-                ArchiveExistsText.Text = "✗ Archive folder does not exist (will be created)";
+                ArchiveExistsText.Text = "✗ Archive will be created";
                 ArchiveExistsText.Foreground = System.Windows.Media.Brushes.Gray;
-                ArchiveFileCountText.Text = "Files in archive: 0";
+                ArchiveFileCountText.Text = "0 file(s)";
                 
                 LogActivity("Archive folder does not exist (will be created)", isWarning: true);
             }
 
-            ArchiveInfoPanel.Visibility = Visibility.Visible;
+            ArchiveInfoStatusItem.Visibility = Visibility.Visible;
+            StatusSeparator.Visibility = Visibility.Visible;
         }
 
         private void SelectAllButton_Click(object sender, RoutedEventArgs e)
@@ -485,20 +503,6 @@ namespace FileArchiver
                 MessageBox.Show($"Error during archiving: {ex.Message}", "Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
-        }
-
-        private void ShowProgress(string message, int progress)
-        {
-            ProgressPanel.Visibility = Visibility.Visible;
-            ProgressText.Text = message;
-            ProgressBar.Value = progress;
-        }
-
-        private void HideProgress()
-        {
-            ProgressPanel.Visibility = Visibility.Collapsed;
-            ProgressBar.Value = 0;
-            ProgressText.Text = string.Empty;
         }
 
         private void SetUIEnabled(bool enabled)
