@@ -4,10 +4,11 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="File Archiver" Height="600" Width="900"
+        Title="File Archiver" Height="650" Width="900"
         WindowStartupLocation="CenterScreen">
     <Grid Margin="10">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -46,8 +47,23 @@
             </Grid>
         </GroupBox>
 
+        <!-- Progress Panel -->
+        <GroupBox Grid.Row="2" Header="Progress" Padding="10" Margin="0,0,0,10"
+                  x:Name="ProgressPanel" Visibility="Collapsed">
+            <StackPanel>
+                <TextBlock x:Name="ProgressText" FontSize="13" Margin="0,0,0,5" FontWeight="SemiBold"/>
+                <ProgressBar x:Name="ProgressBar" Height="25" Minimum="0" Maximum="100">
+                    <ProgressBar.Style>
+                        <Style TargetType="ProgressBar">
+                            <Setter Property="Foreground" Value="#FF4CAF50"/>
+                        </Style>
+                    </ProgressBar.Style>
+                </ProgressBar>
+            </StackPanel>
+        </GroupBox>
+
         <!-- Archive Info -->
-        <GroupBox Grid.Row="2" Header="Archive Information" Padding="10" Margin="0,0,0,10"
+        <GroupBox Grid.Row="3" Header="Archive Information" Padding="10" Margin="0,0,0,10"
                   x:Name="ArchiveInfoPanel" Visibility="Collapsed">
             <StackPanel>
                 <TextBlock x:Name="ArchiveExistsText" FontSize="13" Margin="0,0,0,5"/>
@@ -56,7 +72,7 @@
         </GroupBox>
 
         <!-- Preview List -->
-        <GroupBox Grid.Row="3" Header="Preview - Files Found" Padding="10" Margin="0,0,0,10">
+        <GroupBox Grid.Row="4" Header="Preview - Files Found" Padding="10" Margin="0,0,0,10">
             <ListView x:Name="FilesListView" SelectionMode="Single">
                 <ListView.View>
                     <GridView>
@@ -111,7 +127,7 @@
         </GroupBox>
 
         <!-- Selection Actions -->
-        <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,0,0,10">
+        <StackPanel Grid.Row="5" Orientation="Horizontal" Margin="0,0,0,10">
             <Button x:Name="SelectAllButton" Content="Select All" Width="100" 
                     Margin="0,0,10,0" Click="SelectAllButton_Click" Padding="5"/>
             <Button x:Name="DeselectAllButton" Content="Deselect All" Width="100" 
@@ -121,7 +137,7 @@
         </StackPanel>
 
         <!-- Archive Button -->
-        <Button x:Name="ArchiveButton" Grid.Row="5" Content="Archive Selected Files" 
+        <Button x:Name="ArchiveButton" Grid.Row="6" Content="Archive Selected Files" 
                 Height="40" FontSize="16" FontWeight="Bold" 
                 Click="ArchiveButton_Click" IsEnabled="False"
                 Background="#FF4CAF50" Foreground="White">

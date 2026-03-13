@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Win32;
@@ -12,6 +13,7 @@ namespace FileArchiver
     public partial class MainWindow : Window
     {
         private ObservableCollection<FileItemModel> _fileItems;
+        private bool _isProcessing;
 
         public MainWindow()
         {
@@ -43,8 +45,10 @@ namespace FileArchiver
             }
         }
 
-        private void ScanButton_Click(object sender, RoutedEventArgs e)
+        private async void ScanButton_Click(object sender, RoutedEventArgs e)
         {
+            if (_isProcessing) return;
+
             string folderPath = FolderPathTextBox.Text;
             string searchText = SearchTextBox.Text?.Trim();
 
@@ -70,6 +74,24 @@ namespace FileArchiver
                 return;
             }
 
+            // Disable UI during scan
+            SetUIEnabled(false);
+            _isProcessing = true;
+
+            try
+            {
+                await ScanFilesAsync(folderPath, searchText);
+            }
+            finally
+            {
+                SetUIEnabled(true);
+                _isProcessing = false;
+                HideProgress();
+            }
+        }
+
+        private async Task ScanFilesAsync(string folderPath, string searchText)
+        {
             // Perform scan
             _fileItems.Clear();
             var searchWords = searchText.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
@@ -77,50 +99,94 @@ namespace FileArchiver
 
             try
             {
-                var files = Directory.GetFiles(folderPath, "*.*", SearchOption.TopDirectoryOnly);
+                ShowProgress("Initializing scan...", 0);
 
-                foreach (var file in files)
+                // Get all files first
+                var allFiles = await Task.Run(() =>
+                    Directory.GetFiles(folderPath, "*.*", SearchOption.TopDirectoryOnly));
+
+                ShowProgress($"Found {allFiles.Length} files. Analyzing matches...", 10);
+
+                int totalFiles = allFiles.Length;
+                int processedFiles = 0;
+                int matchedFiles = 0;
+
+                // Process files with progress updates
+                await Task.Run(() =>
                 {
-                    string fileName = Path.GetFileName(file);
-
-                    // Check if all search words are in the filename (case-insensitive)
-                    if (searchWords.All(word => fileName.Contains(word, StringComparison.OrdinalIgnoreCase)))
+                    foreach (var file in allFiles)
                     {
-                        var fileInfo = new FileInfo(file);
-                        var fileItem = new FileItemModel
-                        {
-                            FileName = fileName,
-                            FullPath = file,
-                            FileSize = fileInfo.Length,
-                            IsSelected = true // Default to selected
-                        };
+                        string fileName = Path.GetFileName(file);
 
-                        // Check if file exists in archive folder
-                        if (Directory.Exists(archiveFolderPath))
+                        // Check if all search words are in the filename (case-insensitive)
+                        if (searchWords.All(word => fileName.Contains(word, StringComparison.OrdinalIgnoreCase)))
                         {
-                            string archiveFilePath = Path.Combine(archiveFolderPath, fileName);
-                            fileItem.ExistsInArchive = File.Exists(archiveFilePath);
+                            var fileInfo = new FileInfo(file);
+                            var fileItem = new FileItemModel
+                            {
+                                FileName = fileName,
+                                FullPath = file,
+                                FileSize = fileInfo.Length,
+                                IsSelected = true // Default to selected
+                            };
+
+                            // Check if file exists in archive folder
+                            if (Directory.Exists(archiveFolderPath))
+                            {
+                                string archiveFilePath = Path.Combine(archiveFolderPath, fileName);
+                                fileItem.ExistsInArchive = File.Exists(archiveFilePath);
+                            }
+
+                            // Add to collection on UI thread
+                            Dispatcher.Invoke(() =>
+                            {
+                                // Subscribe to property changes for this item
+                                fileItem.PropertyChanged += (s, args) =>
+                                {
+                                    if (args.PropertyName == nameof(FileItemModel.IsSelected) ||
+                                        args.PropertyName == nameof(FileItemModel.AllowOverwrite))
+                                    {
+                                        UpdateSelectionCount();
+                                    }
+                                };
+
+                                _fileItems.Add(fileItem);
+                            });
+
+                            matchedFiles++;
                         }
 
-                        // Subscribe to property changes for this item
-                        fileItem.PropertyChanged += (s, args) =>
-                        {
-                            if (args.PropertyName == nameof(FileItemModel.IsSelected) ||
-                                args.PropertyName == nameof(FileItemModel.AllowOverwrite))
-                            {
-                                UpdateSelectionCount();
-                            }
-                        };
+                        processedFiles++;
 
-                        _fileItems.Add(fileItem);
+                        // Update progress every 10 files or on last file
+                        if (processedFiles % 10 == 0 || processedFiles == totalFiles)
+                        {
+                            int progress = 10 + (int)((processedFiles / (double)totalFiles) * 85);
+                            Dispatcher.Invoke(() =>
+                            {
+                                ShowProgress($"Scanning: {processedFiles}/{totalFiles} files • {matchedFiles} matches found", progress);
+                            });
+                        }
                     }
-                }
+                });
 
                 // Update archive info
+                ShowProgress("Checking archive folder...", 95);
                 UpdateArchiveInfo(archiveFolderPath);
 
-                MessageBox.Show($"Found {_fileItems.Count} matching file(s).", "Scan Complete",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
+                ShowProgress($"Scan complete! Found {matchedFiles} matching file(s).", 100);
+                await Task.Delay(800); // Brief pause to show completion
+
+                if (matchedFiles > 0)
+                {
+                    MessageBox.Show($"Found {_fileItems.Count} matching file(s).", "Scan Complete",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    MessageBox.Show("No files found matching the search criteria.", "Scan Complete",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
             }
             catch (Exception ex)
             {
@@ -174,11 +240,13 @@ namespace FileArchiver
         {
             int selectedCount = _fileItems.Count(f => f.IsSelected && (!f.ExistsInArchive || f.AllowOverwrite));
             SelectionCountText.Text = $"Selected for archive: {selectedCount} file(s)";
-            ArchiveButton.IsEnabled = selectedCount > 0;
+            ArchiveButton.IsEnabled = selectedCount > 0 && !_isProcessing;
         }
 
-        private void ArchiveButton_Click(object sender, RoutedEventArgs e)
+        private async void ArchiveButton_Click(object sender, RoutedEventArgs e)
         {
+            if (_isProcessing) return;
+
             string folderPath = FolderPathTextBox.Text;
             string searchText = SearchTextBox.Text?.Trim();
             string archiveFolderPath = Path.Combine(folderPath, searchText);
@@ -203,34 +271,74 @@ namespace FileArchiver
             if (result != MessageBoxResult.Yes)
                 return;
 
+            // Disable UI during archive
+            SetUIEnabled(false);
+            _isProcessing = true;
+
             try
             {
+                await ArchiveFilesAsync(archiveFolderPath, filesToArchive);
+            }
+            finally
+            {
+                SetUIEnabled(true);
+                _isProcessing = false;
+                HideProgress();
+            }
+        }
+
+        private async Task ArchiveFilesAsync(string archiveFolderPath, List<FileItemModel> filesToArchive)
+        {
+            try
+            {
+                ShowProgress("Preparing archive...", 0);
+
                 // Create archive folder if it doesn't exist
-                if (!Directory.Exists(archiveFolderPath))
+                await Task.Run(() =>
                 {
-                    Directory.CreateDirectory(archiveFolderPath);
-                }
+                    if (!Directory.Exists(archiveFolderPath))
+                    {
+                        Directory.CreateDirectory(archiveFolderPath);
+                    }
+                });
 
                 int successCount = 0;
                 int errorCount = 0;
                 var errors = new List<string>();
+                int totalFiles = filesToArchive.Count;
 
-                foreach (var fileItem in filesToArchive)
+                ShowProgress("Archiving files...", 5);
+
+                await Task.Run(() =>
                 {
-                    try
+                    for (int i = 0; i < filesToArchive.Count; i++)
                     {
-                        string destinationPath = Path.Combine(archiveFolderPath, fileItem.FileName);
+                        var fileItem = filesToArchive[i];
+                        try
+                        {
+                            string destinationPath = Path.Combine(archiveFolderPath, fileItem.FileName);
 
-                        // Move the file (overwrite if allowed)
-                        File.Move(fileItem.FullPath, destinationPath, fileItem.AllowOverwrite);
-                        successCount++;
+                            // Update progress before moving
+                            int progress = 5 + (int)((i / (double)totalFiles) * 90);
+                            Dispatcher.Invoke(() =>
+                            {
+                                ShowProgress($"Archiving: {i + 1}/{totalFiles} - {fileItem.FileName}", progress);
+                            });
+
+                            // Move the file (overwrite if allowed)
+                            File.Move(fileItem.FullPath, destinationPath, fileItem.AllowOverwrite);
+                            successCount++;
+                        }
+                        catch (Exception ex)
+                        {
+                            errorCount++;
+                            errors.Add($"{fileItem.FileName}: {ex.Message}");
+                        }
                     }
-                    catch (Exception ex)
-                    {
-                        errorCount++;
-                        errors.Add($"{fileItem.FileName}: {ex.Message}");
-                    }
-                }
+                });
+
+                ShowProgress($"Archive complete! {successCount} file(s) archived.", 100);
+                await Task.Delay(800); // Brief pause to show completion
 
                 // Show results
                 string message = $"Archive complete!\n\nSuccessfully archived: {successCount} file(s)";
@@ -248,13 +356,47 @@ namespace FileArchiver
                 // Refresh the scan
                 if (successCount > 0)
                 {
-                    ScanButton_Click(sender, e);
+                    ScanButton_Click(null, null);
                 }
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Error during archiving: {ex.Message}", "Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void ShowProgress(string message, int progress)
+        {
+            ProgressPanel.Visibility = Visibility.Visible;
+            ProgressText.Text = message;
+            ProgressBar.Value = progress;
+        }
+
+        private void HideProgress()
+        {
+            ProgressPanel.Visibility = Visibility.Collapsed;
+            ProgressBar.Value = 0;
+            ProgressText.Text = string.Empty;
+        }
+
+        private void SetUIEnabled(bool enabled)
+        {
+            FolderPathTextBox.IsEnabled = enabled;
+            BrowseButton.IsEnabled = enabled;
+            SearchTextBox.IsEnabled = enabled;
+            ScanButton.IsEnabled = enabled;
+            SelectAllButton.IsEnabled = enabled;
+            DeselectAllButton.IsEnabled = enabled;
+            FilesListView.IsEnabled = enabled;
+            
+            if (!enabled)
+            {
+                ArchiveButton.IsEnabled = false;
+            }
+            else
+            {
+                UpdateSelectionCount(); // This will set the proper state for ArchiveButton
             }
         }
     }
