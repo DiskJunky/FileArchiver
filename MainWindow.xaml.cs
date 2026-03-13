@@ -117,5 +117,22 @@ namespace FileArchiver
             }
             return 400; // Default fallback
         }
+
+        /// <summary>
+        /// Handles the KeyDown event for the Search Criteria TextBox.
+        /// Triggers the Scan command when the user presses the RETURN key.
+        /// </summary>
+        private void SearchTextBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key == System.Windows.Input.Key.Return)
+            {
+                var viewModel = this.DataContext as MainWindowViewModel;
+                if (viewModel?.ScanCommand != null && viewModel.ScanCommand.CanExecute(null))
+                {
+                    viewModel.ScanCommand.Execute(null);
+                    e.Handled = true;
+                }
+            }
+        }
     }
 }

@@ -183,7 +183,8 @@
                                  Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                                  IsEnabled="{Binding IsUIEnabled}"
                                  VerticalAlignment="Center" Padding="5" FontSize="14" 
-                                 ToolTip="Enter file name search terms (all words must match)"/>
+                                 ToolTip="Enter file name search terms (all words must match)"
+                                 KeyDown="SearchTextBox_KeyDown"/>
                         <Button x:Name="ScanButton" Grid.Row="2" Grid.Column="2" 
                                 Content="Scan Files" Margin="10,0,0,0" 
                                 Command="{Binding ScanCommand}" 

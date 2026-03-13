@@ -1,12 +1,14 @@
 using System;
 using System.IO;
 using FileArchiver.Properties;
+using Serilog;
 
 namespace FileArchiver
 {
     /// <summary>
     /// Manages user preferences and settings using .NET Configuration API.
     /// Handles persistence of application state across sessions using user.config file.
+    /// All operations include comprehensive error logging via Serilog.
     /// </summary>
     public static class SettingsManager
     {
@@ -27,10 +29,11 @@ namespace FileArchiver
             {
                 Settings.Default.LastSourceFolder = folderPath;
                 Settings.Default.Save();
+                Log.Information("Successfully saved last source folder: {FolderPath}", folderPath);
             }
-            catch
+            catch (Exception ex)
             {
-                // Silently fail if we can't write settings
+                Log.Error(ex, "Failed to save last source folder: {FolderPath}", folderPath);
             }
         }
 
@@ -53,18 +56,26 @@ namespace FileArchiver
                 // Verify the folder still exists and the setting is not empty
                 if (!string.IsNullOrWhiteSpace(folderPath) && Directory.Exists(folderPath))
                 {
+                    Log.Information("Loaded last source folder: {FolderPath}", folderPath);
                     return folderPath;
                 }
+
+                if (!string.IsNullOrWhiteSpace(folderPath) && !Directory.Exists(folderPath))
+                {
+                    Log.Warning("Saved source folder no longer exists: {FolderPath}. Using Downloads folder instead.", folderPath);
+                }
             }
-            catch
+            catch (Exception ex)
             {
-                // Silently fail if we can't read from settings
+                Log.Error(ex, "Failed to load last source folder. Using Downloads folder instead.");
             }
 
             // Default to Downloads folder
-            return Path.Combine(
+            string downloadsPath = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                 "Downloads");
+            Log.Information("Using default Downloads folder: {DownloadsPath}", downloadsPath);
+            return downloadsPath;
         }
 
         /// <summary>
@@ -84,10 +95,11 @@ namespace FileArchiver
             {
                 Settings.Default.LastSearchCriteria = searchCriteria;
                 Settings.Default.Save();
+                Log.Information("Successfully saved last search criteria: {SearchCriteria}", searchCriteria);
             }
-            catch
+            catch (Exception ex)
             {
-                // Silently fail if we can't write settings
+                Log.Error(ex, "Failed to save last search criteria: {SearchCriteria}", searchCriteria);
             }
         }
 
@@ -105,11 +117,16 @@ namespace FileArchiver
         {
             try
             {
-                return Settings.Default.LastSearchCriteria ?? string.Empty;
+                string criteria = Settings.Default.LastSearchCriteria ?? string.Empty;
+                if (!string.IsNullOrWhiteSpace(criteria))
+                {
+                    Log.Information("Loaded last search criteria: {SearchCriteria}", criteria);
+                }
+                return criteria;
             }
-            catch
+            catch (Exception ex)
             {
-                // Silently fail if we can't read from settings
+                Log.Error(ex, "Failed to load last search criteria. Using empty string instead.");
             }
 
             return string.Empty;
@@ -132,10 +149,11 @@ namespace FileArchiver
             {
                 Settings.Default.ThemePreference = theme;
                 Settings.Default.Save();
+                Log.Information("Successfully saved theme preference: {Theme}", theme);
             }
-            catch
+            catch (Exception ex)
             {
-                // Silently fail if we can't write settings
+                Log.Error(ex, "Failed to save theme preference: {Theme}", theme);
             }
         }
 
@@ -156,14 +174,16 @@ namespace FileArchiver
                 string theme = Settings.Default.ThemePreference;
                 if (!string.IsNullOrWhiteSpace(theme))
                 {
+                    Log.Information("Loaded theme preference: {Theme}", theme);
                     return theme;
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Silently fail if we can't read from settings
+                Log.Error(ex, "Failed to load theme preference. Using System theme instead.");
             }
 
+            Log.Information("Using default theme preference: System");
             return "System";
         }
 
@@ -189,10 +209,13 @@ namespace FileArchiver
                 Settings.Default.WindowTop = top.ToString();
                 Settings.Default.MainGridRow0Height = mainGridRow0Height.ToString();
                 Settings.Default.Save();
+                Log.Information("Successfully saved window state. Width: {Width}, Height: {Height}, Left: {Left}, Top: {Top}, Row0Height: {Row0Height}",
+                    width, height, left, top, mainGridRow0Height);
             }
-            catch
+            catch (Exception ex)
             {
-                // Silently fail if we can't write settings
+                Log.Error(ex, "Failed to save window state. Width: {Width}, Height: {Height}, Left: {Left}, Top: {Top}, Row0Height: {Row0Height}",
+                    width, height, left, top, mainGridRow0Height);
             }
         }
 
@@ -220,19 +243,62 @@ namespace FileArchiver
             try
             {
                 if (double.TryParse(Settings.Default.WindowWidth, out double w))
+                {
                     width = w;
+                    Log.Debug("Loaded WindowWidth from settings: {WindowWidth}", width);
+                }
+                else
+                {
+                    Log.Warning("Failed to parse WindowWidth from settings. Using default: {DefaultWidth}", width);
+                }
+
                 if (double.TryParse(Settings.Default.WindowHeight, out double h))
+                {
                     height = h;
+                    Log.Debug("Loaded WindowHeight from settings: {WindowHeight}", height);
+                }
+                else
+                {
+                    Log.Warning("Failed to parse WindowHeight from settings. Using default: {DefaultHeight}", height);
+                }
+
                 if (double.TryParse(Settings.Default.WindowLeft, out double l))
+                {
                     left = l;
+                    Log.Debug("Loaded WindowLeft from settings: {WindowLeft}", left);
+                }
+                else
+                {
+                    Log.Warning("Failed to parse WindowLeft from settings. Using default: {DefaultLeft}", left);
+                }
+
                 if (double.TryParse(Settings.Default.WindowTop, out double t))
+                {
                     top = t;
+                    Log.Debug("Loaded WindowTop from settings: {WindowTop}", top);
+                }
+                else
+                {
+                    Log.Warning("Failed to parse WindowTop from settings. Using default: {DefaultTop}", top);
+                }
+
                 if (double.TryParse(Settings.Default.MainGridRow0Height, out double r))
+                {
                     mainGridRow0Height = r;
+                    Log.Debug("Loaded MainGridRow0Height from settings: {MainGridRow0Height}", mainGridRow0Height);
+                }
+                else
+                {
+                    Log.Warning("Failed to parse MainGridRow0Height from settings. Using default: {DefaultRow0Height}", mainGridRow0Height);
+                }
+
+                Log.Information("Successfully loaded window state. Width: {Width}, Height: {Height}, Left: {Left}, Top: {Top}, Row0Height: {Row0Height}",
+                    width, height, left, top, mainGridRow0Height);
             }
-            catch
+            catch (Exception ex)
             {
-                // Silently fail, keeping default values
+                Log.Error(ex, "Failed to load window state. Using default values. Width: {DefaultWidth}, Height: {DefaultHeight}, Left: {DefaultLeft}, Top: {DefaultTop}, Row0Height: {DefaultRow0Height}",
+                    width, height, left, top, mainGridRow0Height);
             }
         }
     }
