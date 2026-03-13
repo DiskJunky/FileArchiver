@@ -9,7 +9,7 @@
         Background="{DynamicResource WindowBackgroundBrush}"
         Icon="Resources/FileArchiver.png">
 
-    <Window.Resources>
+            <Window.Resources>
         <!-- Custom Archive Button Style with theme support -->
         <Style x:Key="ArchiveButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="{DynamicResource ArchiveButtonBrush}"/>
@@ -136,7 +136,6 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
                 <!-- Search Configuration Panel -->
@@ -233,21 +232,30 @@
                     </ListView>
                 </GroupBox>
 
-                <!-- Selection Actions -->
-                <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,10">
-                    <Button x:Name="SelectAllButton" Content="Select All" Width="100" 
-                            Margin="0,0,10,0" Click="SelectAllButton_Click" Padding="5"/>
-                    <Button x:Name="DeselectAllButton" Content="Deselect All" Width="100" 
-                            Click="DeselectAllButton_Click" Padding="5"/>
-                    <TextBlock x:Name="SelectionCountText" VerticalAlignment="Center" 
-                               Margin="20,0,0,0" FontSize="13" FontWeight="Bold"/>
-                </StackPanel>
+                <!-- Selection Actions and Archive Button -->
+                <Grid Grid.Row="2" Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
 
-                <!-- Archive Button -->
-                <Button x:Name="ArchiveButton" Grid.Row="3" Content="Archive Selected Files" 
-                        Height="40" FontSize="16" FontWeight="Bold" 
-                        Click="ArchiveButton_Click" IsEnabled="False"
-                        Style="{StaticResource ArchiveButtonStyle}"/>
+                    <!-- Left: Selection Buttons -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                        <Button x:Name="SelectAllButton" Content="Select All" Width="100" 
+                                Margin="0,0,10,0" Click="SelectAllButton_Click" Padding="5"/>
+                        <Button x:Name="DeselectAllButton" Content="Deselect All" Width="100" 
+                                Click="DeselectAllButton_Click" Padding="5"/>
+                        <TextBlock x:Name="SelectionCountText" VerticalAlignment="Center" 
+                                   Margin="20,0,0,0" FontSize="13" FontWeight="Bold"/>
+                    </StackPanel>
+
+                    <!-- Right: Archive Button -->
+                    <Button x:Name="ArchiveButton" Grid.Column="2" Content="Archive Selected Files" 
+                            Width="250" Height="40" FontSize="16" FontWeight="Bold" 
+                            Click="ArchiveButton_Click" IsEnabled="False"
+                            Style="{StaticResource ArchiveButtonStyle}"/>
+                </Grid>
             </Grid>
 
             <!-- Horizontal GridSplitter -->
