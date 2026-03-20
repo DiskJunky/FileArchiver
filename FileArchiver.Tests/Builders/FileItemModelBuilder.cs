@@ -1,4 +1,4 @@
-using FileArchiver;
+    using FileArchiver;
 
 namespace FileArchiver.Tests.Builders
 {

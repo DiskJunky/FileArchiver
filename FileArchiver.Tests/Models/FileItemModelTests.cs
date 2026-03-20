@@ -77,11 +77,12 @@ namespace FileArchiver.Tests.Models
         }
 
         [Fact]
-        public void ExistsInArchive_WhenSetToTrue_ShouldSetAllowOverwriteToFalse()
+        public void ExistsInArchive_WhenSetToTrue_ShouldSetIsSelectedAndAllowOverwriteToFalse()
         {
             // Arrange
             var fileItem = FileItemModelBuilder.Create()
-                .WithAllowOverwrite(true)
+                .WithIsSelected(true)
+                .WithAllowOverwrite(false)
                 .Build();
 
             // Act
@@ -89,6 +90,7 @@ namespace FileArchiver.Tests.Models
 
             // Assert
             fileItem.AllowOverwrite.Should().BeFalse();
+            fileItem.IsSelected.Should().BeFalse("ExistsInArchive sets IsSelected to false");
         }
 
         [Fact]
@@ -104,25 +106,32 @@ namespace FileArchiver.Tests.Models
             };
 
             // Act
-            fileItem.IsSelected = false;
+            fileItem.IsSelected = !fileItem.IsSelected;
 
             // Assert
             propertyChangedRaised.Should().BeTrue();
         }
 
         [Fact]
-        public void AllowOverwrite_WhenExistsInArchiveIsFalse_ShouldRemainFalse()
+        public void AllowOverwrite_WhenChanged_ShouldRaisePropertyChanged()
         {
             // Arrange
             var fileItem = FileItemModelBuilder.Create()
-                .WithExistsInArchive(false)
+                .WithExistsInArchive(true)
                 .Build();
+            
+            var propertyChangedRaised = false;
+            fileItem.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(FileItemModel.AllowOverwrite))
+                    propertyChangedRaised = true;
+            };
 
             // Act
             fileItem.AllowOverwrite = true;
 
             // Assert
-            fileItem.AllowOverwrite.Should().BeFalse("overwrite is only applicable when file exists in archive");
+            propertyChangedRaised.Should().BeTrue();
         }
 
         [Fact]
@@ -137,7 +146,7 @@ namespace FileArchiver.Tests.Models
             fileItem.ExistsInArchive.Should().BeFalse();
             fileItem.IsSelected.Should().BeTrue();
             fileItem.AllowOverwrite.Should().BeFalse();
-            fileItem.Status.Should().Be("Ready");
+            fileItem.Status.Should().Be("Selected");
         }
 
         [Fact]
@@ -152,7 +161,7 @@ namespace FileArchiver.Tests.Models
             fileItem.ExistsInArchive.Should().BeTrue();
             fileItem.IsSelected.Should().BeFalse();
             fileItem.AllowOverwrite.Should().BeFalse();
-            fileItem.Status.Should().Be("Already archived");
+            fileItem.Status.Should().Be("Exists (Skip)");
         }
 
         [Theory]
@@ -183,11 +192,39 @@ namespace FileArchiver.Tests.Models
             // Act
             fileItem.IsSelected = !fileItem.IsSelected;
             fileItem.ExistsInArchive = !fileItem.ExistsInArchive;
-            fileItem.AllowOverwrite = true; // May not raise if ExistsInArchive is false
+            fileItem.AllowOverwrite = true;
 
             // Assert
             changedProperties.Should().Contain(nameof(FileItemModel.IsSelected));
             changedProperties.Should().Contain(nameof(FileItemModel.ExistsInArchive));
+            changedProperties.Should().Contain(nameof(FileItemModel.AllowOverwrite));
+        }
+
+        [Fact]
+        public void Status_WhenExistsAndOverwriteAllowed_ShouldReturnWillOverwrite()
+        {
+            // Arrange
+            var fileItem = FileItemModelBuilder.Create()
+                .WithExistsInArchive(true)
+                .Build();
+
+            // Act
+            fileItem.AllowOverwrite = true;
+
+            // Assert
+            fileItem.Status.Should().Be("Will Overwrite");
+        }
+
+        [Fact]
+        public void Status_WhenNotSelected_ShouldReturnNotSelected()
+        {
+            // Arrange & Act
+            var fileItem = FileItemModelBuilder.Create()
+                .WithIsSelected(false)
+                .Build();
+
+            // Assert
+            fileItem.Status.Should().Be("Not Selected");
         }
     }
 }
