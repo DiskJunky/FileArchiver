@@ -1,3 +1,4 @@
 <Solution>
   <Project Path="FileArchiver.csproj" />
+  <Project Path="FileArchiver.Tests/FileArchiver.Tests.csproj" />
 </Solution>

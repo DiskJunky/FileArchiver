@@ -10,6 +10,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="FileArchiver.Tests\**" />
+    <EmbeddedResource Remove="FileArchiver.Tests\**" />
+    <None Remove="FileArchiver.Tests\**" />
+    <Page Remove="FileArchiver.Tests\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Remove="Resources\FileArchiver.ico" />
     <None Remove="Resources\FileArchiver.png" />
   </ItemGroup>
@@ -23,13 +30,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="FileArchiver.Tests\FileArchiver.Tests.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Serilog" Version="4.3.1" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
-    <PackageReference Include="System.Configuration.ConfigurationManager" Version="8.0.1" />
   </ItemGroup>
 
   <ItemGroup>
